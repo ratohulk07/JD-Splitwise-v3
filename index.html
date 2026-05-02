@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Splitwise Lite</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<h1>💰 Splitwise Lite</h1>
+
+<div class="box">
+  <h3>👥 Add People</h3>
+  <input id="personInput" placeholder="Enter name">
+  <button onclick="addPerson()">Add</button>
+  <p id="peopleList"></p>
+</div>
+
+<div class="box">
+  <h3>📍 Create Trip</h3>
+  <input id="tripInput" placeholder="Trip name">
+  <button onclick="createTrip()">Create</button>
+  <select id="tripSelect" onchange="switchTrip()"></select>
+</div>
+
+<div id="app" style="display:none;">
+
+<div class="box">
+  <h3>➕ Add Expense</h3>
+  <input id="desc" placeholder="Description">
+  <input id="amount" type="number" placeholder="Amount">
+  <br>
+  <select id="payer"></select>
+  <h4>Participants</h4>
+  <div id="participants"></div>
+  <button onclick="addExpense()">Add Expense</button>
+</div>
+
+<div class="box">
+  <h3>📌 Expenses</h3>
+  <ul id="expenseList"></ul>
+</div>
+
+<div class="box">
+  <h3>⚖️ Balances</h3>
+  <ul id="balanceList"></ul>
+</div>
+
+<div class="box">
+  <h3>🤝 Settlement</h3>
+  <ul id="settlementList"></ul>
+</div>
+
+</div>
+
+<!-- Firebase and your app.js scripts -->
+<script type="module">
+  // Import the functions you need from the SDKs you need
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-app.js";
+  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-analytics.js";
+  import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-auth.js";
+  import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
+
+  // Your web app's Firebase configuration
+  const firebaseConfig = {
+    apiKey: "AIzaSyBbC_9zqcu9VgaI9Uk4qQMqg4fSQUcaIrs",
+    authDomain: "jd-splitwise.firebaseapp.com",
+    projectId: "jd-splitwise",
+    storageBucket: "jd-splitwise.firebasestorage.app",
+    messagingSenderId: "726382392580",
+    appId: "1:726382392580:web:d74ada9140be26314d0c51",
+    measurementId: "G-MNJJ2E3NQY"
+  };
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const analytics = getAnalytics(app); // Initializing Analytics (optional if not used)
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  // Define a constant for your shared trip ID
+  const SHARED_TRIP_ID = "jd-splitwise-friends"; // This is your "one ID"
+  const tripDocRef = doc(db, "trips", SHARED_TRIP_ID);
+
+  // Global variable to hold synced data, accessible by app.js functions
+  window.currentFirestoreData = { people: [], expenses: [] };
+  window.SHARED_TRIP_ID = SHARED_TRIP_ID; // Make it accessible globally
+
+  // --- Firebase Authentication (Anonymous) ---
+  signInAnonymously(auth)
+    .then(() => {
+      console.log("Signed in anonymously.");
+      // Once signed in, start listening for data
+      listenForFirestoreData();
+    })
+    .catch((error) => {
+      console.error("Error signing in anonymously:", error);
+      alert("Failed to connect to Firebase. Check console for details.");
+    });
+
+  // --- Firebase Firestore Data Listener ---
+  function listenForFirestoreData() {
+    onSnapshot(tripDocRef, (docSnap) => {
+      if (docSnap.exists()) {
+        window.currentFirestoreData = docSnap.data();
+        console.log("Current data:", window.currentFirestoreData);
+        // After data is loaded/updated, render the UI
+        render(); // Calls the render function from your app.js
+      } else {
+        // Document doesn't exist, create it with initial empty data
+        console.log("No such document! Initializing new trip.");
+        setDoc(tripDocRef, {
+          people: [],
+          expenses: []
+        })
+        .then(() => console.log("New trip document created."))
+        .catch((error) => console.error("Error creating new trip document:", error));
+      }
+    }, (error) => {
+      console.error("Error listening to Firestore:", error);
+    });
+  }
+
+  // --- Functions to update Firestore, to be called from your app.js ---
+  window.addPersonToFirestore = function(name) {
+    if (!window.currentFirestoreData.people.includes(name)) {
+      const newPeople = [...window.currentFirestoreData.people, name];
+      updateDoc(tripDocRef, {
+        people: newPeople
+      })
+      .then(() => console.log("Person added to Firestore"))
+      .catch((error) => console.error("Error adding person:", error));
+    }
+  }
+
+  window.addExpenseToFirestore = function(expense) {
+    const newExpenses = [...window.currentFirestoreData.expenses, expense];
+    updateDoc(tripDocRef, {
+        expenses: newExpenses
+    })
+    .then(() => console.log("Expense added to Firestore"))
+    .catch((error) => console.error("Error adding expense:", error));
+  }
+
+  // Make your app.js functions globally accessible to be called from HTML
+  // (e.g., onclick="addPerson()") if they aren't already.
+  // This ensures they are available in the global scope if app.js is a module.
+  // If app.js itself is not a module, this might not be strictly necessary for HTML calls.
+</script>
+
+<!-- Your app.js must be a module if it uses import/export or if it needs to access
+     variables defined within the <script type="module"> block directly.
+     However, by assigning to `window.`, we make these functions and variables
+     globally available for a traditional script. -->
+<script src="app.js"></script>
+
+</body>
+</html>
